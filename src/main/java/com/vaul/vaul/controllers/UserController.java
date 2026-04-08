@@ -1,29 +1,36 @@
 package com.vaul.vaul.controllers;
 
-import com.vaul.vaul.model.User;
-import com.vaul.vaul.services.UserService;
+import com.vaul.vaul.dtos.userdtos.registerRequestDto;
+import com.vaul.vaul.dtos.userdtos.responseRegistration;
+import com.vaul.vaul.services.implementations.UserService;
+import jakarta.validation.Valid;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
-import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.RequestBody;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
 
 @RestController
+@RequestMapping("/api/users")
 public class UserController {
 
     @Autowired
     private UserService service;
 
     @PostMapping("/add")
-        public ResponseEntity<User> add(@RequestBody User user) {
-        return ResponseEntity.ok(service.addUser(user));
+        public ResponseEntity<responseRegistration> addUser(@Valid @RequestBody registerRequestDto registerRequestDto) {
+        return ResponseEntity.ok(service.registerUser(registerRequestDto));
     }
 
-    @GetMapping("/getallusers")
-    public ResponseEntity<?>fetch() {
+    @GetMapping("/getall")
+    public ResponseEntity<List<responseRegistration>>fetch() {
         return ResponseEntity.ok(service.fetchUser());
     }
+
+    @GetMapping("get/{id}")
+    public  ResponseEntity<responseRegistration> getUserById(@PathVariable Long id) {
+        return ResponseEntity.ok(service.getOneUser(id));
+    }
+
+
 }

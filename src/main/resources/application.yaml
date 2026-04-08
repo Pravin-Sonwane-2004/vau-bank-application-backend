@@ -4,14 +4,54 @@ spring:
 
   datasource:
     url: jdbc:mysql://localhost:3306/vaul?useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=UTC
-    username: ${SPRING_DATASOURCE_USERNAME}
-    password: ${SPRING_DATASOURCE_PASSWORD}
+    username: ${SPRING_DATASOURCE_USERNAME:root}
+    password: ${SPRING_DATASOURCE_PASSWORD:root}
     driver-class-name: com.mysql.cj.jdbc.Driver
 
   jpa:
-    show-sql: true
+    show-sql: false
     hibernate:
-      ddl-auto: create
+      ddl-auto: update
     properties:
       hibernate:
-        dialect: org.hibernate.dialect.MySQLDialect
+        format_sql: true
+
+  devtools:
+    restart:
+      enabled: true
+    livereload:
+      enabled: true
+
+  output:
+    ansi:
+      enabled: ALWAYS
+
+# LOGGING (COLORFUL + CLEAN)
+
+logging:
+  level:
+    root: INFO
+    org.springframework: INFO
+    org.springframework.web: DEBUG
+
+    # Hibernate SQL logging
+    org.hibernate.SQL: DEBUG   # only shows query
+    org.hibernate.orm.jdbc.bind: TRACE  # shows actual values
+
+  pattern:
+    console: "%clr(%d{yyyy-MM-dd HH:mm:ss}){cyan} %clr(%5p) %clr([%t]){yellow} %clr(%logger{36}){green} - %msg%n"
+
+#  ACTUATOR (MONITORING)
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,metrics
+
+  endpoint:
+    health:
+      show-details: always
+
+# SERVER CONFIG
+server:
+  port: 8080
