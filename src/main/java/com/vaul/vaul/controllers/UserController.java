@@ -21,6 +21,11 @@ public class UserController {
         public ResponseEntity<responseRegistration> addUser(@Valid @RequestBody registerRequestDto registerRequestDto) {
         return ResponseEntity.ok(service.registerUser(registerRequestDto));
     }
+    @PostMapping("/bulk")
+    public ResponseEntity<List<responseRegistration>> addBulkUsers(
+            @Valid @RequestBody List<registerRequestDto> registerRequests) {
+        return ResponseEntity.ok(service.addBulkUsers(registerRequests));
+    }
 
     @GetMapping("/getall")
     public ResponseEntity<List<responseRegistration>>fetch() {

@@ -8,7 +8,12 @@ import java.util.List;
 
 public interface UserService {
     responseRegistration registerUser(registerRequestDto dto);
+
     List<responseRegistration> fetchUser();
+
     responseRegistration getOneUser(Long id);
+
     responseRegistration updateUserById(Long id, registerRequestDto dto);
+
+    List<responseRegistration> addBulkUsers(List<registerRequestDto> dto);
 }

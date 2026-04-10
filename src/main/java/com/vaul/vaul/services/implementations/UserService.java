@@ -87,5 +87,28 @@ public class UserService implements com.vaul.vaul.services.interfaces.UserServic
         return response;
     }
 
+    @Override
+    public List<responseRegistration> addBulkUsers(List<registerRequestDto> dto) {
+        List<User> users = new ArrayList<>();
+        for (registerRequestDto dtos : dto) {
+            User user = new User();
+            user.setName(dtos.getName());
+            user.setEmail(dtos.getEmail());
+            user.setPassword(dtos.getPassword());
+            users.add(user);
+        }
+        // Save all users
+        List<User> savedUsers = repo.saveAll(users);
+        // Convert Entity -> Response DTO
+        List<responseRegistration> responseList = new ArrayList<>();
+        for (User user : savedUsers) {
+            responseRegistration response = new responseRegistration();
+            response.setId(user.getId());
+            response.setName(user.getName());
+            response.setEmail(user.getEmail());
+            responseList.add(response);
+        }
+        return responseList;
+    }
 
 }
