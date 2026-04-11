@@ -27,6 +27,22 @@ public class UserController {
         return ResponseEntity.ok(service.addBulkUsers(registerRequests));
     }
 
+    @PutMapping("/update/{id}")
+    public ResponseEntity<responseRegistration> updateUserById(
+            @PathVariable Long id,
+            @Valid @RequestBody registerRequestDto dto) {
+
+        return ResponseEntity.ok(service.updateUserById(id, dto));
+    }
+
+    @PutMapping("updatebyemail/{email}")
+    public ResponseEntity<responseRegistration> updateUserByEmail(
+            @PathVariable String email,
+            @RequestBody registerRequestDto dto) {
+
+        return ResponseEntity.ok(service.updateUserByEmail(email, dto));
+    }
+
     @GetMapping("/getall")
     public ResponseEntity<List<responseRegistration>>fetch() {
         return ResponseEntity.ok(service.fetchUser());
@@ -36,6 +52,5 @@ public class UserController {
     public  ResponseEntity<responseRegistration> getUserById(@PathVariable Long id) {
         return ResponseEntity.ok(service.getOneUser(id));
     }
-
 
 }

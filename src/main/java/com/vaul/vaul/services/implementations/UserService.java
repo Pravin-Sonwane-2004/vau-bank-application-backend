@@ -3,11 +3,14 @@ package com.vaul.vaul.services.implementations;
 import com.vaul.vaul.dtos.userdtos.registerRequestDto;
 import com.vaul.vaul.dtos.userdtos.responseRegistration;
 import com.vaul.vaul.entities.User;
+import com.vaul.vaul.exceptions.UserNotFoundException;
 import com.vaul.vaul.repositories.UserRepo;
+import jakarta.validation.constraints.Email;
 import org.springframework.stereotype.Service;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Optional;
 
 @Service
 public class UserService implements com.vaul.vaul.services.interfaces.UserService {
@@ -34,7 +37,6 @@ public class UserService implements com.vaul.vaul.services.interfaces.UserServic
 
         return response;
     }
-
     @Override
     public List<responseRegistration> fetchUser() {
         List<User> users = repo.findAll();
@@ -66,19 +68,23 @@ public class UserService implements com.vaul.vaul.services.interfaces.UserServic
     @Override
     public responseRegistration updateUserById(Long id, registerRequestDto dto) {
 
-        // 🔹 Fetch existing user
         User user = repo.findById(id)
-                .orElseThrow(() -> new RuntimeException("User not found"));
+                .orElseThrow(() -> new UserNotFoundException(id));
 
-        // 🔹 Update fields
-        user.setName(dto.getName());
-        user.setEmail(dto.getEmail());
-        user.setPassword(dto.getPassword());
+        if (dto.getName() != null) {
+            user.setName(dto.getName());
+        }
 
-        // 🔹 Save updated user
+        if (dto.getEmail() != null) {
+            user.setEmail(dto.getEmail());
+        }
+
+        if (dto.getPassword() != null) {
+            user.setPassword(dto.getPassword());
+        }
+
         User updatedUser = repo.save(user);
 
-        // 🔹 Convert to response DTO
         responseRegistration response = new responseRegistration();
         response.setId(updatedUser.getId());
         response.setName(updatedUser.getName());
@@ -86,7 +92,6 @@ public class UserService implements com.vaul.vaul.services.interfaces.UserServic
 
         return response;
     }
-
     @Override
     public List<responseRegistration> addBulkUsers(List<registerRequestDto> dto) {
         List<User> users = new ArrayList<>();
@@ -111,4 +116,36 @@ public class UserService implements com.vaul.vaul.services.interfaces.UserServic
         return responseList;
     }
 
+    @Override
+    public responseRegistration updateUserByEmail(String email, registerRequestDto dto) {
+
+        Optional<User> optionalUser = repo.findByEmail(email);
+
+        if (!optionalUser.isPresent()) {
+            throw new UserNotFoundException(email);
+        }
+
+        User user = optionalUser.get();
+
+        if (dto.getName() != null) {
+            user.setName(dto.getName());
+        }
+
+        if (dto.getEmail() != null) {
+            user.setEmail(dto.getEmail());
+        }
+
+        if (dto.getPassword() != null) {
+            user.setPassword(dto.getPassword());
+        }
+
+        User updatedUser = repo.save(user);
+
+        responseRegistration response = new responseRegistration();
+        response.setId(updatedUser.getId());
+        response.setName(updatedUser.getName());
+        response.setEmail(updatedUser.getEmail());
+
+        return response;
+    }
 }
