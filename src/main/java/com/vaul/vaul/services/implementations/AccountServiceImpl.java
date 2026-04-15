@@ -2,10 +2,23 @@ package com.vaul.vaul.services.implementations;
 
 import com.vaul.vaul.dtos.accountdtos.AccountOpenRequestDto;
 import com.vaul.vaul.dtos.accountdtos.AccountResponseDto;
+import com.vaul.vaul.dtos.accountdtos.BalanceResponseDto;
+import com.vaul.vaul.dtos.transactiondtos.DepositRequestDto;
+import com.vaul.vaul.dtos.transactiondtos.WithdrawRequestDto;
 import com.vaul.vaul.entities.Account;
+import com.vaul.vaul.entities.Transaction;
+import com.vaul.vaul.entities.User;
+import com.vaul.vaul.dtos.accountdtos.BalanceResponseDto;
+import com.vaul.vaul.dtos.transactiondtos.DepositRequestDto;
+import com.vaul.vaul.dtos.transactiondtos.WithdrawRequestDto;
+import com.vaul.vaul.entities.Account;
+import com.vaul.vaul.entities.Transaction;
 import com.vaul.vaul.entities.User;
 import com.vaul.vaul.enums.account.AccountStatus;
+import com.vaul.vaul.enums.branches.ExistsBranches;
+import com.vaul.vaul.enums.transaction.TransactionType;
 import com.vaul.vaul.repositories.AccountRepository;
+import com.vaul.vaul.repositories.TransactionRepository;
 import com.vaul.vaul.repositories.UserRepo;
 import com.vaul.vaul.services.interfaces.AccountService;
 import org.springframework.http.HttpStatus;
@@ -13,9 +26,14 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.server.ResponseStatusException;
 
+import java.time.LocalDateTime;
+import java.math.RoundingMode;
+import java.time.Year;
+import java.util.List;
+import java.util.concurrent.ThreadLocalRandom;
+
 import java.math.BigDecimal;
 import java.math.RoundingMode;
-import java.time.LocalDateTime;
 import java.time.Year;
 import java.util.List;
 import java.util.concurrent.ThreadLocalRandom;
@@ -25,10 +43,12 @@ public class AccountServiceImpl implements AccountService {
 
     private final AccountRepository accountRepository;
     private final UserRepo userRepo;
+    private final TransactionRepository transactionRepository;
 
-    public AccountServiceImpl(AccountRepository accountRepository, UserRepo userRepo) {
+    public AccountServiceImpl(AccountRepository accountRepository, UserRepo userRepo, TransactionRepository transactionRepository) {
         this.accountRepository = accountRepository;
         this.userRepo = userRepo;
+        this.transactionRepository = transactionRepository;
     }
 
     @Override
@@ -41,7 +61,7 @@ public class AccountServiceImpl implements AccountService {
                 ));
 
         BigDecimal initialDeposit = normalizeAmount(requestDto.getInitialDeposit());
-        String branchCode = normalizeBranchCode(requestDto.getBranchCode());
+        int branchCode = requestDto.getBranch().getBranchCode();
 
         Account account = new Account();
         account.setUser(user);
@@ -81,6 +101,73 @@ public class AccountServiceImpl implements AccountService {
                 .toList();
     }
 
+    @Override
+    @Transactional
+    public AccountResponseDto deposit(DepositRequestDto requestDto) {
+        Account account = accountRepository.findById(requestDto.getAccountId())
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Account not found with id: " + requestDto.getAccountId()));
+
+        if (account.getStatus() != AccountStatus.ACTIVE) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Account is not active");
+        }
+
+        BigDecimal amount = normalizeAmount(requestDto.getAmount());
+        BigDecimal newBalance = account.getBalance().add(amount);
+
+        account.setBalance(newBalance);
+        accountRepository.save(account);
+
+        Transaction transaction = new Transaction();
+        transaction.setType(TransactionType.DEPOSIT);
+        transaction.setAmount(amount);
+        transaction.setFromAccountId(account.getId());
+        transaction.setBalanceAfter(newBalance);
+        transaction.setDescription("Deposit");
+        transactionRepository.save(transaction);
+
+        return mapToResponse(account);
+    }
+
+    @Override
+    @Transactional
+    public AccountResponseDto withdraw(WithdrawRequestDto requestDto) {
+        Account account = accountRepository.findById(requestDto.getAccountId())
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Account not found with id: " + requestDto.getAccountId()));
+
+        if (account.getStatus() != AccountStatus.ACTIVE) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Account is not active");
+        }
+
+        BigDecimal amount = normalizeAmount(requestDto.getAmount());
+        if (account.getBalance().compareTo(amount) < 0) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Insufficient funds");
+        }
+
+        BigDecimal newBalance = account.getBalance().subtract(amount);
+
+        account.setBalance(newBalance);
+        accountRepository.save(account);
+
+        Transaction transaction = new Transaction();
+        transaction.setType(TransactionType.WITHDRAW);
+        transaction.setAmount(amount);
+        transaction.setFromAccountId(account.getId());
+        transaction.setBalanceAfter(newBalance);
+        transaction.setDescription("Withdrawal");
+        transactionRepository.save(transaction);
+
+        return mapToResponse(account);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public BalanceResponseDto getBalance(Long accountId) {
+        Account account = accountRepository.findById(accountId)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Account not found with id: " + accountId));
+
+        return new BalanceResponseDto(account.getId(), account.getAccountNumber(), account.getBalance());
+    }
+
     private AccountResponseDto mapToResponse(Account account) {
         AccountResponseDto responseDto = new AccountResponseDto();
         responseDto.setAccountId(account.getId());
@@ -97,22 +184,14 @@ public class AccountServiceImpl implements AccountService {
 
     private BigDecimal normalizeAmount(BigDecimal amount) {
         if (amount == null) {
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Initial deposit is required");
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Amount is required");
         }
 
-        if (amount.compareTo(BigDecimal.ZERO) < 0) {
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Initial deposit cannot be negative");
+        if (amount.compareTo(BigDecimal.ZERO) <= 0) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Amount must be positive");
         }
 
         return amount.setScale(2, RoundingMode.HALF_UP);
-    }
-
-    private String normalizeBranchCode(String branchCode) {
-        if (branchCode == null || branchCode.isBlank()) {
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Branch code is required");
-        }
-
-        return branchCode.trim().toUpperCase();
     }
 
     private String generateUniqueAccountNumber() {

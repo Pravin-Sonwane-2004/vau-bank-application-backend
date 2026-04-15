@@ -21,7 +21,7 @@ public class AccountResponseDto {
     private AccountType accountType;
     private BigDecimal balance;
     private AccountStatus status;
-    private String branchCode;
+    private int branchCode;
     private LocalDateTime openedAt;
     private Long userId;
     private String userName;

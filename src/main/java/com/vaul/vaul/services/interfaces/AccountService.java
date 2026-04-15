@@ -2,7 +2,9 @@ package com.vaul.vaul.services.interfaces;
 
 import com.vaul.vaul.dtos.accountdtos.AccountOpenRequestDto;
 import com.vaul.vaul.dtos.accountdtos.AccountResponseDto;
-
+import com.vaul.vaul.dtos.accountdtos.BalanceResponseDto;
+import com.vaul.vaul.dtos.transactiondtos.DepositRequestDto;
+import com.vaul.vaul.dtos.transactiondtos.WithdrawRequestDto;
 import java.util.List;
 
 public interface AccountService {
@@ -11,4 +13,10 @@ public interface AccountService {
     AccountResponseDto getAccountById(Long accountId);
 
     List<AccountResponseDto> getAccountsByUserId(Long userId);
+
+    AccountResponseDto deposit(DepositRequestDto requestDto);
+
+    AccountResponseDto withdraw(WithdrawRequestDto requestDto);
+
+    BalanceResponseDto getBalance(Long accountId);
 }

@@ -1,6 +1,7 @@
 package com.vaul.vaul.dtos.accountdtos;
 
 import com.vaul.vaul.enums.account.AccountType;
+import com.vaul.vaul.enums.branches.ExistsBranches;
 import jakarta.validation.constraints.DecimalMin;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
@@ -28,7 +29,6 @@ public class AccountOpenRequestDto {
     @DecimalMin(value = "0.00", inclusive = true, message = "Initial deposit cannot be negative")
     private BigDecimal initialDeposit;
 
-    @NotBlank(message = "Branch code is required")
-    @Size(max = 20, message = "Branch code must be at most 20 characters")
-    private String branchCode;
+    @NotNull(message = "Branch is required")
+    private ExistsBranches branch;
 }

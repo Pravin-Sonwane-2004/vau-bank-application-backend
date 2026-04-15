@@ -2,6 +2,9 @@ package com.vaul.vaul.controllers;
 
 import com.vaul.vaul.dtos.accountdtos.AccountOpenRequestDto;
 import com.vaul.vaul.dtos.accountdtos.AccountResponseDto;
+import com.vaul.vaul.dtos.accountdtos.BalanceResponseDto;
+import com.vaul.vaul.dtos.transactiondtos.DepositRequestDto;
+import com.vaul.vaul.dtos.transactiondtos.WithdrawRequestDto;
 import com.vaul.vaul.services.interfaces.AccountService;
 import jakarta.validation.Valid;
 import org.springframework.http.HttpStatus;
@@ -33,5 +36,20 @@ public class AccountController {
     @GetMapping("/user/{userId}")
     public ResponseEntity<List<AccountResponseDto>> getAccountsByUserId(@PathVariable Long userId) {
         return ResponseEntity.ok(accountService.getAccountsByUserId(userId));
+    }
+
+    @PostMapping("/deposit")
+    public ResponseEntity<AccountResponseDto> deposit(@Valid @RequestBody DepositRequestDto requestDto) {
+        return ResponseEntity.ok(accountService.deposit(requestDto));
+    }
+
+    @PostMapping("/withdraw")
+    public ResponseEntity<AccountResponseDto> withdraw(@Valid @RequestBody WithdrawRequestDto requestDto) {
+        return ResponseEntity.ok(accountService.withdraw(requestDto));
+    }
+
+    @GetMapping("/{accountId}/balance")
+    public ResponseEntity<BalanceResponseDto> getBalance(@PathVariable Long accountId) {
+        return ResponseEntity.ok(accountService.getBalance(accountId));
     }
 }
