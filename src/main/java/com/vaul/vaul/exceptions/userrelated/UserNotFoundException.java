@@ -1,4 +1,4 @@
-package com.vaul.vaul.exceptions;
+package com.vaul.vaul.exceptions.userrelated;
 
 public class UserNotFoundException extends RuntimeException {
 

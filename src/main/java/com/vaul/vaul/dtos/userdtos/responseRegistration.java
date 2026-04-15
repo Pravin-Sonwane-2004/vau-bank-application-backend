@@ -5,6 +5,8 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
 
+import java.time.LocalDateTime;
+
 @AllArgsConstructor
 @NoArgsConstructor
 @Getter
@@ -13,4 +15,7 @@ public class responseRegistration {
     private Long id;
     private String name;
     private String email;
+    private Long phone;
+    private byte[] image;
+
 }

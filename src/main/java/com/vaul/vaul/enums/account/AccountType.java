@@ -1,4 +1,4 @@
-package com.vaul.vaul.enums;
+package com.vaul.vaul.enums.account;
 
 public enum AccountType {
     SAVINGS,
