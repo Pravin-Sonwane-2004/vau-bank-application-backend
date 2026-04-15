@@ -38,6 +38,9 @@ import java.time.Year;
 import java.util.List;
 import java.util.concurrent.ThreadLocalRandom;
 
+import java.util.Optional;
+import java.util.ArrayList;
+
 @Service
 public class AccountServiceImpl implements AccountService {
 
@@ -54,11 +57,14 @@ public class AccountServiceImpl implements AccountService {
     @Override
     @Transactional
     public AccountResponseDto openAccount(AccountOpenRequestDto requestDto) {
-        User user = userRepo.findById(requestDto.getUserId())
-                .orElseThrow(() -> new ResponseStatusException(
-                        HttpStatus.NOT_FOUND,
-                        "User not found with id: " + requestDto.getUserId()
-                ));
+        Optional<User> userOpt = userRepo.findById(requestDto.getUserId());
+        if (userOpt.isEmpty()) {
+            throw new ResponseStatusException(
+                    HttpStatus.NOT_FOUND,
+                    "User not found with id: " + requestDto.getUserId()
+            );
+        }
+        User user = userOpt.get();
 
         BigDecimal initialDeposit = normalizeAmount(requestDto.getInitialDeposit());
         int branchCode = requestDto.getBranch().getBranchCode();
@@ -79,11 +85,14 @@ public class AccountServiceImpl implements AccountService {
     @Override
     @Transactional(readOnly = true)
     public AccountResponseDto getAccountById(Long accountId) {
-        Account account = accountRepository.findById(accountId)
-                .orElseThrow(() -> new ResponseStatusException(
-                        HttpStatus.NOT_FOUND,
-                        "Account not found with id: " + accountId
-                ));
+        Optional<Account> accountOpt = accountRepository.findById(accountId);
+        if (accountOpt.isEmpty()) {
+            throw new ResponseStatusException(
+                    HttpStatus.NOT_FOUND,
+                    "Account not found with id: " + accountId
+            );
+        }
+        Account account = accountOpt.get();
 
         return mapToResponse(account);
     }
@@ -95,17 +104,22 @@ public class AccountServiceImpl implements AccountService {
             throw new ResponseStatusException(HttpStatus.NOT_FOUND, "User not found with id: " + userId);
         }
 
-        return accountRepository.findByUserId(userId)
-                .stream()
-                .map(this::mapToResponse)
-                .toList();
+        List<Account> accounts = accountRepository.findByUserId(userId);
+        List<AccountResponseDto> responseList = new ArrayList<>();
+        for (Account account : accounts) {
+            responseList.add(mapToResponse(account));
+        }
+        return responseList;
     }
 
     @Override
     @Transactional
     public AccountResponseDto deposit(DepositRequestDto requestDto) {
-        Account account = accountRepository.findById(requestDto.getAccountId())
-                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Account not found with id: " + requestDto.getAccountId()));
+        Optional<Account> accountOpt = accountRepository.findById(requestDto.getAccountId());
+        if (accountOpt.isEmpty()) {
+            throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Account not found with id: " + requestDto.getAccountId());
+        }
+        Account account = accountOpt.get();
 
         if (account.getStatus() != AccountStatus.ACTIVE) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Account is not active");
@@ -131,8 +145,11 @@ public class AccountServiceImpl implements AccountService {
     @Override
     @Transactional
     public AccountResponseDto withdraw(WithdrawRequestDto requestDto) {
-        Account account = accountRepository.findById(requestDto.getAccountId())
-                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Account not found with id: " + requestDto.getAccountId()));
+        Optional<Account> accountOpt = accountRepository.findById(requestDto.getAccountId());
+        if (accountOpt.isEmpty()) {
+            throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Account not found with id: " + requestDto.getAccountId());
+        }
+        Account account = accountOpt.get();
 
         if (account.getStatus() != AccountStatus.ACTIVE) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Account is not active");
@@ -162,8 +179,11 @@ public class AccountServiceImpl implements AccountService {
     @Override
     @Transactional(readOnly = true)
     public BalanceResponseDto getBalance(Long accountId) {
-        Account account = accountRepository.findById(accountId)
-                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Account not found with id: " + accountId));
+        Optional<Account> accountOpt = accountRepository.findById(accountId);
+        if (accountOpt.isEmpty()) {
+            throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Account not found with id: " + accountId);
+        }
+        Account account = accountOpt.get();
 
         return new BalanceResponseDto(account.getId(), account.getAccountNumber(), account.getBalance());
     }

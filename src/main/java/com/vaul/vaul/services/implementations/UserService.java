@@ -58,8 +58,11 @@ public class UserService implements com.vaul.vaul.services.interfaces.UserServic
     @Override
     public responseRegistration getOneUser(Long id) {
         //  Fetch user safely
-        User user = repo.findById(id)
-                .orElseThrow(() ->  new RuntimeException("User not found with id: " + id));
+        Optional<User> userOpt = repo.findById(id);
+        if (userOpt.isEmpty()) {
+            throw new RuntimeException("User not found with id: " + id);
+        }
+        User user = userOpt.get();
 
         //  Convert Entity → DTO
         responseRegistration response = new responseRegistration();
@@ -72,8 +75,11 @@ public class UserService implements com.vaul.vaul.services.interfaces.UserServic
     @Override
     public responseRegistration updateUserById(Long id, registerRequestDto dto) {
 
-        User user = repo.findById(id)
-                .orElseThrow(() -> new UserNotFoundException(id));
+        Optional<User> userOpt = repo.findById(id);
+        if (userOpt.isEmpty()) {
+            throw new UserNotFoundException(id);
+        }
+        User user = userOpt.get();
 
         if (dto.getName() != null) {
             user.setName(dto.getName());
