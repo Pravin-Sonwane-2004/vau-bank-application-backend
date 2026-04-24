@@ -1,12 +1,8 @@
-package com.vaul.vaul.controllers;
+package com.vaul.vaul.dtos.transactiondtos;
 
 import com.vaul.vaul.dtos.accountdtos.AccountOpenRequestDto;
 import com.vaul.vaul.dtos.accountdtos.AccountResponseDto;
 import com.vaul.vaul.dtos.accountdtos.BalanceResponseDto;
-import com.vaul.vaul.dtos.transactiondtos.DepositRequestDto;
-import com.vaul.vaul.dtos.transactiondtos.TransactionResponseDto;
-import com.vaul.vaul.dtos.transactiondtos.TransferRequestDto;
-import com.vaul.vaul.dtos.transactiondtos.WithdrawRequestDto;
 import com.vaul.vaul.services.interfaces.AccountService;
 import jakarta.validation.Valid;
 import org.springframework.http.HttpStatus;

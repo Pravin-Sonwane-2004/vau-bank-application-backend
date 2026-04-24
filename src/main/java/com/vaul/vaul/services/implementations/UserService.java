@@ -1,5 +1,7 @@
 package com.vaul.vaul.services.implementations;
 
+import com.vaul.vaul.dtos.userdtos.LoginRequestDto;
+import com.vaul.vaul.dtos.userdtos.LoginResponseDto;
 import com.vaul.vaul.dtos.userdtos.registerRequestDto;
 import com.vaul.vaul.dtos.userdtos.responseRegistration;
 import com.vaul.vaul.entities.User;
@@ -7,8 +9,10 @@ import com.vaul.vaul.enums.branches.ExistsBranches;
 import com.vaul.vaul.exceptions.userrelated.UserAlredyPresent;
 import com.vaul.vaul.exceptions.userrelated.UserNotFoundException;
 import com.vaul.vaul.repositories.UserRepo;
+import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.server.ResponseStatusException;
 
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -30,6 +34,28 @@ public class UserService implements com.vaul.vaul.services.interfaces.UserServic
         ensureEmailIsAvailable(dto.getEmail(), null);
         User savedUser = repo.save(buildUser(dto));
         return toResponse(savedUser, "User registered successfully");
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public LoginResponseDto loginUser(LoginRequestDto dto) {
+        Optional<User> userOpt = repo.findByEmail(dto.getEmail());
+        if (userOpt.isEmpty()) {
+            throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Invalid email or password");
+        }
+
+        User user = userOpt.get();
+        if (!user.getPassword().equals(dto.getPassword())) {
+            throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Invalid email or password");
+        }
+
+        return new LoginResponseDto(
+                user.getId(),
+                user.getName(),
+                user.getEmail(),
+                user.getPhone(),
+                "Login successful"
+        );
     }
 
     @Override

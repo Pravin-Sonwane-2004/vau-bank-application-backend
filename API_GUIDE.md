@@ -4,6 +4,7 @@
 
 **Key Features Implemented:**
 - User registration
+- Simple login with email and password
 - Account opening with initial deposit
 - Deposit, Withdraw, Transfer, Balance check
 - Consistent success/error messages for API responses
@@ -51,7 +52,42 @@ curl -X POST http://localhost:8080/api/users/add \\
 
 **Save the `id` (userId = 1) for next step.**
 
-## Step 2: Open Bank Account
+## Step 2: Login User
+
+**Endpoint:** `POST /api/users/login`
+
+**Request Example:**
+```json
+{
+  "email": "john@example.com",
+  "password": "pass123"
+}
+```
+
+**Response Example:**
+```json
+{
+  "id": 1,
+  "name": "John Doe",
+  "email": "john@example.com",
+  "phone": 1234567890,
+  "message": "Login successful"
+}
+```
+
+**cURL:**
+```bash
+curl -X POST http://localhost:8080/api/users/login \
+-H "Content-Type: application/json" \
+-d '{
+  "email": "john@example.com",
+  "password": "pass123"
+}'
+```
+
+**Note:** This is a basic login flow for project learning. It checks email and password, but does not create JWT token.
+
+## Step 3: Open Bank Account
 
 **Endpoint:** `POST /api/accounts/open`
 
@@ -94,7 +130,7 @@ curl -X POST http://localhost:8080/api/accounts/open \\
 
 **Save `accountId` (10) for money operations.**
 
-## Step 3: Send/Receive Money (Deposit & Withdraw)
+## Step 4: Send/Receive Money (Deposit & Withdraw)
 
 ### 3.1 Deposit Money
 
@@ -174,7 +210,7 @@ curl -X POST http://localhost:8080/api/accounts/transfer \\
 -d '{"fromAccountId": 10, "toAccountId": 11, "amount": 300.00}'
 ```
 
-## Step 4: Check Results
+## Step 5: Check Results
 
 ### 4.1 Get Balance
 
@@ -212,16 +248,19 @@ curl http://localhost:8080/api/accounts/10/balance
 # 1. Register User
 curl -X POST http://localhost:8080/api/users/add -H "Content-Type: application/json" -d '{"name":"Test User","email":"test@test.com","password":"pass","phone":"000","image":"test.jpg"}'
 
-# 2. Open Account (use returned userId)
+# 2. Login User
+curl -X POST http://localhost:8080/api/users/login -H "Content-Type: application/json" -d '{"email":"test@test.com","password":"pass"}'
+
+# 3. Open Account (use returned userId)
 curl -X POST http://localhost:8080/api/accounts/open -H "Content-Type: application/json" -d '{"userId":1,"accountType":"SAVINGS","initialDeposit":1000,"branch":"AMBAD"}'
 
-# 3. Deposit
+# 4. Deposit
 curl -X POST http://localhost:8080/api/accounts/deposit -H "Content-Type: application/json" -d '{"accountId":1,"amount":500}'
 
-# 4. Transfer
+# 5. Transfer
 curl -X POST http://localhost:8080/api/accounts/transfer -H "Content-Type: application/json" -d '{"fromAccountId":1,"toAccountId":2,"amount":200}'
 
-# 5. Check Balance
+# 6. Check Balance
 curl http://localhost:8080/api/accounts/1/balance
 ```
 

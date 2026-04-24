@@ -1,5 +1,7 @@
 package com.vaul.vaul.controllers;
 
+import com.vaul.vaul.dtos.userdtos.LoginRequestDto;
+import com.vaul.vaul.dtos.userdtos.LoginResponseDto;
 import com.vaul.vaul.dtos.userdtos.registerRequestDto;
 import com.vaul.vaul.dtos.userdtos.responseRegistration;
 import com.vaul.vaul.services.implementations.UserService;
@@ -17,6 +19,11 @@ public class UserController {
 
     public UserController(UserService service) {
         this.service = service;
+    }
+
+    @PostMapping("/login")
+    public ResponseEntity<LoginResponseDto> loginUser(@Valid @RequestBody LoginRequestDto loginRequestDto) {
+        return ResponseEntity.ok(service.loginUser(loginRequestDto));
     }
 
     @PostMapping("/add")

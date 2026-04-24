@@ -5,12 +5,13 @@ Simple Spring Boot banking backend for interview practice and project demos.
 This project focuses on the basic banking flow:
 
 1. Register a user
-2. Open a bank account for that user
-3. Deposit money
-4. Withdraw money
-5. Transfer money between accounts
-6. Check balance
-7. View transaction history
+2. Login with email and password
+3. Open a bank account for that user
+4. Deposit money
+5. Withdraw money
+6. Transfer money between accounts
+7. Check balance
+8. View transaction history
 
 The code is kept straightforward on purpose so it is easy to explain in interviews. It uses normal controller -> service -> repository flow, simple loops and condition checks, and avoids unnecessary advanced patterns.
 
@@ -101,7 +102,33 @@ What happens internally:
 3. User is saved in database
 4. Response DTO is returned
 
-### Step 2: Open Account
+### Step 2: Login User
+
+Endpoint:
+
+`POST /api/users/login`
+
+Example request:
+
+```json
+{
+  "email": "john@example.com",
+  "password": "pass123"
+}
+```
+
+What happens internally:
+
+1. Service finds user by email
+2. Password is checked
+3. If email or password is wrong, login fails
+4. Basic user details are returned
+
+Note:
+
+This is a simple login for project flow. It does not generate JWT token.
+
+### Step 3: Open Account
 
 After user creation, open a bank account using that user id.
 
@@ -129,7 +156,7 @@ What happens internally:
 5. Opening transaction is saved
 6. Account response is returned
 
-### Step 3: Deposit Money
+### Step 4: Deposit Money
 
 Endpoint:
 
@@ -152,7 +179,7 @@ Flow:
 4. Save account
 5. Save transaction record
 
-### Step 4: Withdraw Money
+### Step 5: Withdraw Money
 
 Endpoint:
 
@@ -176,7 +203,7 @@ Flow:
 5. Save account
 6. Save transaction record
 
-### Step 5: Transfer Money
+### Step 6: Transfer Money
 
 Endpoint:
 
@@ -203,7 +230,7 @@ Flow:
 7. Save both accounts
 8. Save one transfer transaction record
 
-### Step 6: Check Balance
+### Step 7: Check Balance
 
 Endpoint:
 
@@ -211,7 +238,7 @@ Endpoint:
 
 This returns account id, account number, and current balance.
 
-### Step 7: View Transactions
+### Step 8: View Transactions
 
 Endpoint:
 
@@ -294,6 +321,7 @@ Fields:
 
 ### User APIs
 
+- `POST /api/users/login`
 - `POST /api/users/add`
 - `POST /api/users/bulk`
 - `PUT /api/users/update/{id}`
@@ -381,7 +409,15 @@ curl -X POST http://localhost:8080/api/users/add \
 -d "{\"name\":\"Test User\",\"email\":\"test@test.com\",\"password\":\"pass123\",\"phone\":9876543210}"
 ```
 
-### 2. Open account
+### 2. Login user
+
+```bash
+curl -X POST http://localhost:8080/api/users/login \
+-H "Content-Type: application/json" \
+-d "{\"email\":\"test@test.com\",\"password\":\"pass123\"}"
+```
+
+### 3. Open account
 
 ```bash
 curl -X POST http://localhost:8080/api/accounts/open \
@@ -389,7 +425,7 @@ curl -X POST http://localhost:8080/api/accounts/open \
 -d "{\"userId\":1,\"accountType\":\"SAVINGS\",\"initialDeposit\":1000.00,\"branch\":\"AMBAD\"}"
 ```
 
-### 3. Deposit money
+### 4. Deposit money
 
 ```bash
 curl -X POST http://localhost:8080/api/accounts/deposit \
@@ -397,7 +433,7 @@ curl -X POST http://localhost:8080/api/accounts/deposit \
 -d "{\"accountId\":1,\"amount\":500.00}"
 ```
 
-### 4. Withdraw money
+### 5. Withdraw money
 
 ```bash
 curl -X POST http://localhost:8080/api/accounts/withdraw \
@@ -405,7 +441,7 @@ curl -X POST http://localhost:8080/api/accounts/withdraw \
 -d "{\"accountId\":1,\"amount\":200.00}"
 ```
 
-### 5. Transfer money
+### 6. Transfer money
 
 ```bash
 curl -X POST http://localhost:8080/api/accounts/transfer \
@@ -413,13 +449,13 @@ curl -X POST http://localhost:8080/api/accounts/transfer \
 -d "{\"fromAccountId\":1,\"toAccountId\":2,\"amount\":100.00}"
 ```
 
-### 6. Check balance
+### 7. Check balance
 
 ```bash
 curl http://localhost:8080/api/accounts/1/balance
 ```
 
-### 7. View transactions
+### 8. View transactions
 
 ```bash
 curl http://localhost:8080/api/accounts/1/transactions
@@ -430,13 +466,14 @@ curl http://localhost:8080/api/accounts/1/transactions
 You can explain it like this:
 
 1. This is a layered Spring Boot banking backend.
-2. A user is created first.
-3. A user can open one or more bank accounts.
-4. Every deposit, withdraw, and transfer updates the account balance.
-5. Every money operation is also saved as a transaction record.
-6. Transfer uses `@Transactional` so debit and credit happen together.
-7. `BigDecimal` is used for money values.
-8. JPA repositories are used for database interaction.
+2. A user is registered first.
+3. User can login with email and password.
+4. A user can open one or more bank accounts.
+5. Every deposit, withdraw, and transfer updates the account balance.
+6. Every money operation is also saved as a transaction record.
+7. Transfer uses `@Transactional` so debit and credit happen together.
+8. `BigDecimal` is used for money values.
+9. JPA repositories are used for database interaction.
 
 ## Good Interview Talking Points
 
@@ -452,8 +489,8 @@ This project is intentionally simple.
 
 It does not currently include:
 
-- authentication and authorization
 - JWT security
+- role-based authorization
 - KYC workflow
 - admin approval flow
 - statement PDF generation
