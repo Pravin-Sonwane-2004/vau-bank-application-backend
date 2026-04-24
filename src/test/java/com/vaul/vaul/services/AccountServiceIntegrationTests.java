@@ -10,10 +10,7 @@ import com.vaul.vaul.enums.account.AccountStatus;
 import com.vaul.vaul.enums.account.AccountType;
 import com.vaul.vaul.enums.branches.ExistsBranches;
 import com.vaul.vaul.enums.transaction.TransactionType;
-import com.vaul.vaul.repositories.AccountClosureRequestRepository;
 import com.vaul.vaul.repositories.AccountRepository;
-import com.vaul.vaul.repositories.IdempotencyRecordRepository;
-import com.vaul.vaul.repositories.KycCaseRepository;
 import com.vaul.vaul.repositories.TransactionRepository;
 import com.vaul.vaul.repositories.UserRepo;
 import com.vaul.vaul.services.interfaces.AccountService;
@@ -45,20 +42,8 @@ class AccountServiceIntegrationTests {
     @Autowired
     private UserRepo userRepo;
 
-    @Autowired
-    private AccountClosureRequestRepository accountClosureRequestRepository;
-
-    @Autowired
-    private KycCaseRepository kycCaseRepository;
-
-    @Autowired
-    private IdempotencyRecordRepository idempotencyRecordRepository;
-
     @BeforeEach
     void cleanDatabase() {
-        idempotencyRecordRepository.deleteAll();
-        accountClosureRequestRepository.deleteAll();
-        kycCaseRepository.deleteAll();
         transactionRepository.deleteAll();
         accountRepository.deleteAll();
         userRepo.deleteAll();
