@@ -37,7 +37,7 @@ public class Account {
     @Column(nullable = false, length = 20)
     private AccountStatus status;
 
-@Column(name = "branch_code", nullable = false)
+    @Column(name = "branch_code", nullable = false)
     private int branchCode;
 
     @Column(name = "opened_at", nullable = false, updatable = false)

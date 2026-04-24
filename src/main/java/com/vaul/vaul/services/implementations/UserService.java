@@ -3,12 +3,15 @@ package com.vaul.vaul.services.implementations;
 import com.vaul.vaul.dtos.userdtos.registerRequestDto;
 import com.vaul.vaul.dtos.userdtos.responseRegistration;
 import com.vaul.vaul.entities.User;
+import com.vaul.vaul.enums.branches.ExistsBranches;
 import com.vaul.vaul.exceptions.userrelated.UserAlredyPresent;
 import com.vaul.vaul.exceptions.userrelated.UserNotFoundException;
 import com.vaul.vaul.repositories.UserRepo;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 import java.util.Optional;
 
@@ -22,145 +25,133 @@ public class UserService implements com.vaul.vaul.services.interfaces.UserServic
     }
 
     @Override
+    @Transactional
     public responseRegistration registerUser(registerRequestDto dto) {
-        User user = new User();
-        user.setName(dto.getName());
-        user.setEmail(dto.getEmail());
-        user.setPassword(dto.getPassword());
-        user.setImage(dto.getImage());
-        user.setPhone(dto.getPhone());
-        User savedUser = repo.save(user);
-
-        responseRegistration response = new responseRegistration();
-        response.setId(savedUser.getId());
-        response.setName(savedUser.getName());
-        response.setEmail(savedUser.getEmail());
-        response.setImage(savedUser.getImage());
-        response.setPhone(savedUser.getPhone());
-
-        return response;
+        ensureEmailIsAvailable(dto.getEmail(), null);
+        User savedUser = repo.save(buildUser(dto));
+        return toResponse(savedUser, "User registered successfully");
     }
+
     @Override
+    @Transactional(readOnly = true)
     public List<responseRegistration> fetchUser() {
         List<User> users = repo.findAll();
-        List<responseRegistration> returnDto = new ArrayList<>();
-        for (User user : users) {
-            responseRegistration dto = new responseRegistration();
-            dto.setId(user.getId());
-            dto.setEmail(user.getEmail());
-            dto.setName(user.getName());
-            dto.setPhone(user.getPhone());
-            dto.setImage(user.getImage());
-            returnDto.add(dto);
-        }
-        return returnDto;
-    }
-    @Override
-    public responseRegistration getOneUser(Long id) {
-        //  Fetch user safely
-        Optional<User> userOpt = repo.findById(id);
-        if (userOpt.isEmpty()) {
-            throw new RuntimeException("User not found with id: " + id);
-        }
-        User user = userOpt.get();
-
-        //  Convert Entity → DTO
-        responseRegistration response = new responseRegistration();
-        response.setId(user.getId());
-        response.setName(user.getName());
-        response.setEmail(user.getEmail());
-        response.setPhone(user.getPhone());
-        return response;
-    }
-    @Override
-    public responseRegistration updateUserById(Long id, registerRequestDto dto) {
-
-        Optional<User> userOpt = repo.findById(id);
-        if (userOpt.isEmpty()) {
-            throw new UserNotFoundException(id);
-        }
-        User user = userOpt.get();
-
-        if (dto.getName() != null) {
-            user.setName(dto.getName());
-        }
-
-        if (dto.getEmail() != null) {
-            user.setEmail(dto.getEmail());
-        }
-
-        if (dto.getPassword() != null) {
-            user.setPassword(dto.getPassword());
-        }
-
-        User updatedUser = repo.save(user);
-
-        responseRegistration response = new responseRegistration();
-        response.setId(updatedUser.getId());
-        response.setName(updatedUser.getName());
-        response.setEmail(updatedUser.getEmail());
-        response.setPhone(user.getPhone());
-
-        return response;
-    }
-    @Override
-    public List<responseRegistration> addBulkUsers(List<registerRequestDto> dto) {
-        List<User> users = new ArrayList<>();
-        for (registerRequestDto dtos : dto) {
-            User user = new User();
-            user.setName(dtos.getName());
-            user.setEmail(dtos.getEmail());
-            user.setPassword(dtos.getPassword());
-            users.add(user);
-        }
-        // Save all users
-        List<User> savedUsers = repo.saveAll(users);
-        // Convert Entity -> Response DTO
         List<responseRegistration> responseList = new ArrayList<>();
-        for (User user : savedUsers) {
-            responseRegistration response = new responseRegistration();
-            response.setId(user.getId());
-            response.setName(user.getName());
-            response.setEmail(user.getEmail());
-            responseList.add(response);
-            response.setPhone(user.getPhone());
+        for (User user : users) {
+            responseList.add(toResponse(user, null));
         }
         return responseList;
     }
 
     @Override
+    @Transactional(readOnly = true)
+    public responseRegistration getOneUser(Long id) {
+        return toResponse(findUserById(id), null);
+    }
+
+    @Override
+    @Transactional
+    public List<responseRegistration> addBulkUsers(List<registerRequestDto> dtoList) {
+        List<User> users = new ArrayList<>();
+        for (registerRequestDto dto : dtoList) {
+            ensureEmailIsAvailable(dto.getEmail(), null);
+            users.add(buildUser(dto));
+        }
+
+        List<User> savedUsers = repo.saveAll(users);
+        List<responseRegistration> responseList = new ArrayList<>();
+        for (User user : savedUsers) {
+            responseList.add(toResponse(user, "User registered successfully"));
+        }
+        return responseList;
+    }
+
+    @Override
+    @Transactional
+    public responseRegistration updateUserById(Long id, registerRequestDto dto) {
+        User user = findUserById(id);
+        applyUpdates(user, dto);
+        User updatedUser = repo.save(user);
+        return toResponse(updatedUser, "User updated successfully");
+    }
+
+    @Override
+    @Transactional
     public responseRegistration updateUserByEmail(String email, registerRequestDto dto) {
-
-        Optional<User> optionalUser = repo.findByEmail(email);
-
-        if (!optionalUser.isPresent()) {
+        Optional<User> userOpt = repo.findByEmail(email);
+        if (userOpt.isEmpty()) {
             throw new UserNotFoundException(email);
         }
-        if(dto.getEmail().equals(repo.findByEmail(email))) {
-            throw new UserAlredyPresent(email);
+
+        User user = userOpt.get();
+        applyUpdates(user, dto);
+        User updatedUser = repo.save(user);
+        return toResponse(updatedUser, "User updated successfully");
+    }
+
+    @Override
+    public List<ExistsBranches> returnAllBranches() {
+        return Arrays.asList(ExistsBranches.values());
+    }
+
+    private User buildUser(registerRequestDto dto) {
+        User user = new User();
+        user.setName(dto.getName());
+        user.setEmail(dto.getEmail());
+        user.setPassword(dto.getPassword());
+        user.setPhone(dto.getPhone());
+        user.setImage(dto.getImage());
+        return user;
+    }
+
+    private User findUserById(Long id) {
+        Optional<User> userOpt = repo.findById(id);
+        if (userOpt.isEmpty()) {
+            throw new UserNotFoundException(id);
         }
+        return userOpt.get();
+    }
 
-        User user = optionalUser.get();
-
-        if (dto.getName() != null) {
+    private void applyUpdates(User user, registerRequestDto dto) {
+        if (dto.getName() != null && !dto.getName().isBlank()) {
             user.setName(dto.getName());
         }
 
-        if (dto.getEmail() != null) {
+        if (dto.getEmail() != null && !dto.getEmail().isBlank()) {
+            ensureEmailIsAvailable(dto.getEmail(), user.getId());
             user.setEmail(dto.getEmail());
         }
 
-        if (dto.getPassword() != null) {
+        if (dto.getPassword() != null && !dto.getPassword().isBlank()) {
             user.setPassword(dto.getPassword());
         }
 
-        User updatedUser = repo.save(user);
+        if (dto.getPhone() != null) {
+            user.setPhone(dto.getPhone());
+        }
 
+        if (dto.getImage() != null) {
+            user.setImage(dto.getImage());
+        }
+    }
+
+    private void ensureEmailIsAvailable(String email, Long currentUserId) {
+        Optional<User> existingUser = repo.findByEmail(email);
+        if (existingUser.isPresent()) {
+            if (currentUserId == null || !existingUser.get().getId().equals(currentUserId)) {
+                throw new UserAlredyPresent(email);
+            }
+        }
+    }
+
+    private responseRegistration toResponse(User user, String message) {
         responseRegistration response = new responseRegistration();
-        response.setId(updatedUser.getId());
-        response.setName(updatedUser.getName());
-        response.setEmail(updatedUser.getEmail());
-
+        response.setId(user.getId());
+        response.setName(user.getName());
+        response.setEmail(user.getEmail());
+        response.setPhone(user.getPhone());
+        response.setImage(user.getImage());
+        response.setMessage(message);
         return response;
     }
 }

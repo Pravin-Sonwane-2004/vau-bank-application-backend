@@ -4,6 +4,8 @@ import com.vaul.vaul.dtos.accountdtos.AccountOpenRequestDto;
 import com.vaul.vaul.dtos.accountdtos.AccountResponseDto;
 import com.vaul.vaul.dtos.accountdtos.BalanceResponseDto;
 import com.vaul.vaul.dtos.transactiondtos.DepositRequestDto;
+import com.vaul.vaul.dtos.transactiondtos.TransactionResponseDto;
+import com.vaul.vaul.dtos.transactiondtos.TransferRequestDto;
 import com.vaul.vaul.dtos.transactiondtos.WithdrawRequestDto;
 import com.vaul.vaul.services.interfaces.AccountService;
 import jakarta.validation.Valid;
@@ -46,6 +48,16 @@ public class AccountController {
     @PostMapping("/withdraw")
     public ResponseEntity<AccountResponseDto> withdraw(@Valid @RequestBody WithdrawRequestDto requestDto) {
         return ResponseEntity.ok(accountService.withdraw(requestDto));
+    }
+
+    @PostMapping("/transfer")
+    public ResponseEntity<TransactionResponseDto> transfer(@Valid @RequestBody TransferRequestDto requestDto) {
+        return ResponseEntity.ok(accountService.transfer(requestDto));
+    }
+
+    @GetMapping("/{accountId}/transactions")
+    public ResponseEntity<List<TransactionResponseDto>> getTransactions(@PathVariable Long accountId) {
+        return ResponseEntity.ok(accountService.getTransactionsByAccountId(accountId));
     }
 
     @GetMapping("/{accountId}/balance")

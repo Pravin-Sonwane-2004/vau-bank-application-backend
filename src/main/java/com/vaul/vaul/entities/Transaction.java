@@ -38,6 +38,9 @@ public class Transaction {
     @Column(name = "balance_after", precision = 19, scale = 2)
     private BigDecimal balanceAfter;
 
+    @Column(name = "destination_balance_after", precision = 19, scale = 2)
+    private BigDecimal destinationBalanceAfter;
+
     @Column(nullable = false)
     private LocalDateTime timestamp;
 

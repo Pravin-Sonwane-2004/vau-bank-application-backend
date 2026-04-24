@@ -1,5 +1,6 @@
 package com.vaul.vaul.dtos.accountdtos;
 
+import com.fasterxml.jackson.annotation.JsonInclude;
 import com.vaul.vaul.enums.account.AccountStatus;
 import com.vaul.vaul.enums.account.AccountType;
 import lombok.AllArgsConstructor;
@@ -12,6 +13,7 @@ import java.time.LocalDateTime;
 
 @AllArgsConstructor
 @NoArgsConstructor
+@JsonInclude(JsonInclude.Include.NON_NULL)
 @Getter
 @Setter
 public class AccountResponseDto {
@@ -25,4 +27,5 @@ public class AccountResponseDto {
     private LocalDateTime openedAt;
     private Long userId;
     private String userName;
+    private String message;
 }

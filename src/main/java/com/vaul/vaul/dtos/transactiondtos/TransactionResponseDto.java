@@ -1,5 +1,6 @@
 package com.vaul.vaul.dtos.transactiondtos;
 
+import com.fasterxml.jackson.annotation.JsonInclude;
 import com.vaul.vaul.enums.transaction.TransactionType;
 import lombok.AllArgsConstructor;
 import lombok.Getter;
@@ -11,6 +12,7 @@ import java.time.LocalDateTime;
 
 @AllArgsConstructor
 @NoArgsConstructor
+@JsonInclude(JsonInclude.Include.NON_NULL)
 @Getter
 @Setter
 public class TransactionResponseDto {
@@ -20,6 +22,8 @@ public class TransactionResponseDto {
     private Long fromAccountId;
     private Long toAccountId;
     private BigDecimal balanceAfter;
+    private BigDecimal destinationBalanceAfter;
     private LocalDateTime timestamp;
     private String description;
+    private String message;
 }

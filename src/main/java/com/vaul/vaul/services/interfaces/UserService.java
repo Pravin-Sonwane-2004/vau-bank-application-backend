@@ -2,8 +2,7 @@ package com.vaul.vaul.services.interfaces;
 
 import com.vaul.vaul.dtos.userdtos.registerRequestDto;
 import com.vaul.vaul.dtos.userdtos.responseRegistration;
-import jakarta.validation.constraints.Email;
-//import com.vaul.vaul.model.User;
+import com.vaul.vaul.enums.branches.ExistsBranches;
 
 import java.util.List;
 
@@ -19,4 +18,6 @@ public interface UserService {
     responseRegistration updateUserById(Long id, registerRequestDto dto);
 
     responseRegistration updateUserByEmail(String email, registerRequestDto dto);
+
+    List<ExistsBranches> returnAllBranches();
 }

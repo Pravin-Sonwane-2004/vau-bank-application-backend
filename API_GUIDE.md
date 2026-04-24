@@ -5,8 +5,8 @@
 **Key Features Implemented:**
 - User registration
 - Account opening with initial deposit
-- Deposit, Withdraw, Balance check
-- No lambdas/streams used in services (refactored to for-loops + Optional.isEmpty())
+- Deposit, Withdraw, Transfer, Balance check
+- Consistent success/error messages for API responses
 
 **Full Flow Documentation:**
 
@@ -61,9 +61,7 @@ curl -X POST http://localhost:8080/api/users/add \\
   "userId": 1,
   "accountType": "SAVINGS",
   "initialDeposit": 1000.00,
-  "branch": {
-    "branchCode": 101
-  }
+  "branch": "AMBAD"
 }
 ```
 
@@ -90,7 +88,7 @@ curl -X POST http://localhost:8080/api/accounts/open \\
   "userId": 1,
   "accountType": "SAVINGS",
   "initialDeposit": 1000.00,
-  "branch": {"branchCode": 101}
+  "branch": "AMBAD"
 }'
 ```
 
@@ -140,6 +138,42 @@ curl -X POST http://localhost:8080/api/accounts/withdraw \\
 -d '{"accountId": 10, "amount": 200.00}'
 ```
 
+### 3.3 Transfer Money
+
+**Endpoint:** `POST /api/accounts/transfer`
+
+**Request:**
+```json
+{
+  "fromAccountId": 10,
+  "toAccountId": 11,
+  "amount": 300.00
+}
+```
+
+**Response:**
+```json
+{
+  "id": 7,
+  "type": "TRANSFER",
+  "amount": 300.00,
+  "fromAccountId": 10,
+  "toAccountId": 11,
+  "balanceAfter": 1000.00,
+  "destinationBalanceAfter": 2300.00,
+  "timestamp": "2026-04-24T10:00:00",
+  "description": "Money transferred successfully",
+  "message": "Money transferred successfully"
+}
+```
+
+**cURL:**
+```bash
+curl -X POST http://localhost:8080/api/accounts/transfer \\
+-H "Content-Type: application/json" \\
+-d '{"fromAccountId": 10, "toAccountId": 11, "amount": 300.00}'
+```
+
 ## Step 4: Check Results
 
 ### 4.1 Get Balance
@@ -168,6 +202,10 @@ curl http://localhost:8080/api/accounts/10/balance
 
 **GET** `/api/accounts/user/1`
 
+### 4.4 Get Transaction History
+
+**GET** `/api/accounts/10/transactions`
+
 ## Complete Test Flow (Copy-Paste Ready)
 
 ```bash
@@ -175,20 +213,23 @@ curl http://localhost:8080/api/accounts/10/balance
 curl -X POST http://localhost:8080/api/users/add -H "Content-Type: application/json" -d '{"name":"Test User","email":"test@test.com","password":"pass","phone":"000","image":"test.jpg"}'
 
 # 2. Open Account (use returned userId)
-curl -X POST http://localhost:8080/api/accounts/open -H "Content-Type: application/json" -d '{"userId":1,"accountType":"SAVINGS","initialDeposit":1000,"branch":{"branchCode":101}}'
+curl -X POST http://localhost:8080/api/accounts/open -H "Content-Type: application/json" -d '{"userId":1,"accountType":"SAVINGS","initialDeposit":1000,"branch":"AMBAD"}'
 
 # 3. Deposit
 curl -X POST http://localhost:8080/api/accounts/deposit -H "Content-Type: application/json" -d '{"accountId":1,"amount":500}'
 
-# 4. Check Balance
+# 4. Transfer
+curl -X POST http://localhost:8080/api/accounts/transfer -H "Content-Type: application/json" -d '{"fromAccountId":1,"toAccountId":2,"amount":200}'
+
+# 5. Check Balance
 curl http://localhost:8080/api/accounts/1/balance
 ```
 
 ## Notes
-- **No Lambdas/Streams:** All services use traditional for-loops and Optional.isEmpty()
-- **Transfer:** DTO exists but endpoint not implemented yet
-- **Branch Codes:** Use ExistsBranches enum values (e.g. branchCode: 101)
+- **Transfer:** Fully implemented with transaction logging
+- **Messages:** Mutating APIs now return success messages and errors return structured message payloads
+- **Branch:** Use ExistsBranches enum values such as `AMBAD`, `JALNA_MAIN`, `PARTUR`
 - **Run App:** `mvn spring-boot:run` then test above
 
-**Task Complete: Refactored code + Full documentation with JSON links!**
+**Task Complete: Transfer flow, cleaner services, and updated API documentation.**
 

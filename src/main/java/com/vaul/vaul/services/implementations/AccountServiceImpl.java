@@ -4,18 +4,14 @@ import com.vaul.vaul.dtos.accountdtos.AccountOpenRequestDto;
 import com.vaul.vaul.dtos.accountdtos.AccountResponseDto;
 import com.vaul.vaul.dtos.accountdtos.BalanceResponseDto;
 import com.vaul.vaul.dtos.transactiondtos.DepositRequestDto;
-import com.vaul.vaul.dtos.transactiondtos.WithdrawRequestDto;
-import com.vaul.vaul.entities.Account;
-import com.vaul.vaul.entities.Transaction;
-import com.vaul.vaul.entities.User;
-import com.vaul.vaul.dtos.accountdtos.BalanceResponseDto;
-import com.vaul.vaul.dtos.transactiondtos.DepositRequestDto;
+import com.vaul.vaul.dtos.transactiondtos.TransactionResponseDto;
+import com.vaul.vaul.dtos.transactiondtos.TransferRequestDto;
 import com.vaul.vaul.dtos.transactiondtos.WithdrawRequestDto;
 import com.vaul.vaul.entities.Account;
 import com.vaul.vaul.entities.Transaction;
 import com.vaul.vaul.entities.User;
 import com.vaul.vaul.enums.account.AccountStatus;
-import com.vaul.vaul.enums.branches.ExistsBranches;
+import com.vaul.vaul.enums.account.AccountType;
 import com.vaul.vaul.enums.transaction.TransactionType;
 import com.vaul.vaul.repositories.AccountRepository;
 import com.vaul.vaul.repositories.TransactionRepository;
@@ -26,29 +22,30 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.server.ResponseStatusException;
 
-import java.time.LocalDateTime;
-import java.math.RoundingMode;
-import java.time.Year;
-import java.util.List;
-import java.util.concurrent.ThreadLocalRandom;
-
 import java.math.BigDecimal;
 import java.math.RoundingMode;
+import java.time.LocalDateTime;
 import java.time.Year;
-import java.util.List;
-import java.util.concurrent.ThreadLocalRandom;
-
-import java.util.Optional;
 import java.util.ArrayList;
+import java.util.List;
+import java.util.Optional;
+import java.util.concurrent.ThreadLocalRandom;
 
 @Service
 public class AccountServiceImpl implements AccountService {
+
+    private static final BigDecimal MIN_SAVINGS_OPENING_DEPOSIT = new BigDecimal("1000.00");
+    private static final BigDecimal MIN_CURRENT_OPENING_DEPOSIT = new BigDecimal("5000.00");
 
     private final AccountRepository accountRepository;
     private final UserRepo userRepo;
     private final TransactionRepository transactionRepository;
 
-    public AccountServiceImpl(AccountRepository accountRepository, UserRepo userRepo, TransactionRepository transactionRepository) {
+    public AccountServiceImpl(
+            AccountRepository accountRepository,
+            UserRepo userRepo,
+            TransactionRepository transactionRepository
+    ) {
         this.accountRepository = accountRepository;
         this.userRepo = userRepo;
         this.transactionRepository = transactionRepository;
@@ -57,17 +54,9 @@ public class AccountServiceImpl implements AccountService {
     @Override
     @Transactional
     public AccountResponseDto openAccount(AccountOpenRequestDto requestDto) {
-        Optional<User> userOpt = userRepo.findById(requestDto.getUserId());
-        if (userOpt.isEmpty()) {
-            throw new ResponseStatusException(
-                    HttpStatus.NOT_FOUND,
-                    "User not found with id: " + requestDto.getUserId()
-            );
-        }
-        User user = userOpt.get();
-
-        BigDecimal initialDeposit = normalizeAmount(requestDto.getInitialDeposit());
-        int branchCode = requestDto.getBranch().getBranchCode();
+        User user = findUserById(requestDto.getUserId());
+        BigDecimal initialDeposit = normalizeNonNegativeAmount(requestDto.getInitialDeposit(), "Initial deposit");
+        validateMinimumOpeningDeposit(requestDto.getAccountType(), initialDeposit);
 
         Account account = new Account();
         account.setUser(user);
@@ -75,26 +64,27 @@ public class AccountServiceImpl implements AccountService {
         account.setAccountType(requestDto.getAccountType());
         account.setBalance(initialDeposit);
         account.setStatus(AccountStatus.ACTIVE);
-        account.setBranchCode(branchCode);
+        account.setBranchCode(requestDto.getBranch().getBranchCode());
         account.setOpenedAt(LocalDateTime.now());
 
         Account savedAccount = accountRepository.save(account);
-        return mapToResponse(savedAccount);
+        saveTransaction(
+                TransactionType.DEPOSIT,
+                null,
+                savedAccount.getId(),
+                initialDeposit,
+                initialDeposit,
+                null,
+                "Initial deposit during account opening"
+        );
+
+        return mapToAccountResponse(savedAccount, "Account opened successfully");
     }
 
     @Override
     @Transactional(readOnly = true)
     public AccountResponseDto getAccountById(Long accountId) {
-        Optional<Account> accountOpt = accountRepository.findById(accountId);
-        if (accountOpt.isEmpty()) {
-            throw new ResponseStatusException(
-                    HttpStatus.NOT_FOUND,
-                    "Account not found with id: " + accountId
-            );
-        }
-        Account account = accountOpt.get();
-
-        return mapToResponse(account);
+        return mapToAccountResponse(findAccountById(accountId), null);
     }
 
     @Override
@@ -107,7 +97,7 @@ public class AccountServiceImpl implements AccountService {
         List<Account> accounts = accountRepository.findByUserId(userId);
         List<AccountResponseDto> responseList = new ArrayList<>();
         for (Account account : accounts) {
-            responseList.add(mapToResponse(account));
+            responseList.add(mapToAccountResponse(account, null));
         }
         return responseList;
     }
@@ -115,80 +105,221 @@ public class AccountServiceImpl implements AccountService {
     @Override
     @Transactional
     public AccountResponseDto deposit(DepositRequestDto requestDto) {
-        Optional<Account> accountOpt = accountRepository.findById(requestDto.getAccountId());
-        if (accountOpt.isEmpty()) {
-            throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Account not found with id: " + requestDto.getAccountId());
-        }
-        Account account = accountOpt.get();
+        Account account = findAccountByIdForUpdate(requestDto.getAccountId());
+        requireActiveAccount(account);
 
-        if (account.getStatus() != AccountStatus.ACTIVE) {
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Account is not active");
-        }
-
-        BigDecimal amount = normalizeAmount(requestDto.getAmount());
+        BigDecimal amount = normalizePositiveAmount(requestDto.getAmount(), "Amount");
         BigDecimal newBalance = account.getBalance().add(amount);
-
         account.setBalance(newBalance);
-        accountRepository.save(account);
 
-        Transaction transaction = new Transaction();
-        transaction.setType(TransactionType.DEPOSIT);
-        transaction.setAmount(amount);
-        transaction.setFromAccountId(account.getId());
-        transaction.setBalanceAfter(newBalance);
-        transaction.setDescription("Deposit");
-        transactionRepository.save(transaction);
+        Account savedAccount = accountRepository.save(account);
+        saveTransaction(
+                TransactionType.DEPOSIT,
+                null,
+                savedAccount.getId(),
+                amount,
+                newBalance,
+                null,
+                "Money deposited successfully"
+        );
 
-        return mapToResponse(account);
+        return mapToAccountResponse(savedAccount, "Money deposited successfully");
     }
 
     @Override
     @Transactional
     public AccountResponseDto withdraw(WithdrawRequestDto requestDto) {
-        Optional<Account> accountOpt = accountRepository.findById(requestDto.getAccountId());
-        if (accountOpt.isEmpty()) {
-            throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Account not found with id: " + requestDto.getAccountId());
-        }
-        Account account = accountOpt.get();
+        Account account = findAccountByIdForUpdate(requestDto.getAccountId());
+        requireActiveAccount(account);
 
-        if (account.getStatus() != AccountStatus.ACTIVE) {
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Account is not active");
-        }
-
-        BigDecimal amount = normalizeAmount(requestDto.getAmount());
+        BigDecimal amount = normalizePositiveAmount(requestDto.getAmount(), "Amount");
         if (account.getBalance().compareTo(amount) < 0) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Insufficient funds");
         }
 
         BigDecimal newBalance = account.getBalance().subtract(amount);
-
         account.setBalance(newBalance);
-        accountRepository.save(account);
 
-        Transaction transaction = new Transaction();
-        transaction.setType(TransactionType.WITHDRAW);
-        transaction.setAmount(amount);
-        transaction.setFromAccountId(account.getId());
-        transaction.setBalanceAfter(newBalance);
-        transaction.setDescription("Withdrawal");
-        transactionRepository.save(transaction);
+        Account savedAccount = accountRepository.save(account);
+        saveTransaction(
+                TransactionType.WITHDRAW,
+                savedAccount.getId(),
+                null,
+                amount,
+                newBalance,
+                null,
+                "Money withdrawn successfully"
+        );
 
-        return mapToResponse(account);
+        return mapToAccountResponse(savedAccount, "Money withdrawn successfully");
+    }
+
+    @Override
+    @Transactional
+    public TransactionResponseDto transfer(TransferRequestDto requestDto) {
+        if (requestDto.getFromAccountId().equals(requestDto.getToAccountId())) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Transfer requires two different accounts");
+        }
+
+        BigDecimal amount = normalizePositiveAmount(requestDto.getAmount(), "Amount");
+        Account[] lockedAccounts = lockAccountsForTransfer(requestDto.getFromAccountId(), requestDto.getToAccountId());
+        Account fromAccount = lockedAccounts[0];
+        Account toAccount = lockedAccounts[1];
+
+        requireActiveAccount(fromAccount);
+        requireActiveAccount(toAccount);
+
+        if (fromAccount.getBalance().compareTo(amount) < 0) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Insufficient funds");
+        }
+
+        BigDecimal fromBalanceAfter = fromAccount.getBalance().subtract(amount);
+        BigDecimal toBalanceAfter = toAccount.getBalance().add(amount);
+
+        fromAccount.setBalance(fromBalanceAfter);
+        toAccount.setBalance(toBalanceAfter);
+
+        accountRepository.save(fromAccount);
+        accountRepository.save(toAccount);
+
+        Transaction transaction = saveTransaction(
+                TransactionType.TRANSFER,
+                fromAccount.getId(),
+                toAccount.getId(),
+                amount,
+                fromBalanceAfter,
+                toBalanceAfter,
+                "Money transferred successfully"
+        );
+
+        return mapToTransactionResponse(transaction, "Money transferred successfully");
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<TransactionResponseDto> getTransactionsByAccountId(Long accountId) {
+        findAccountById(accountId);
+
+        List<Transaction> transactions = transactionRepository
+                .findByFromAccountIdOrToAccountIdOrderByTimestampDesc(accountId, accountId);
+        List<TransactionResponseDto> responseList = new ArrayList<>();
+        for (Transaction transaction : transactions) {
+            responseList.add(mapToTransactionResponse(transaction, null));
+        }
+        return responseList;
     }
 
     @Override
     @Transactional(readOnly = true)
     public BalanceResponseDto getBalance(Long accountId) {
+        Account account = findAccountById(accountId);
+        return new BalanceResponseDto(account.getId(), account.getAccountNumber(), account.getBalance());
+    }
+
+    private User findUserById(Long userId) {
+        Optional<User> userOpt = userRepo.findById(userId);
+        if (userOpt.isEmpty()) {
+            throw new ResponseStatusException(HttpStatus.NOT_FOUND, "User not found with id: " + userId);
+        }
+        return userOpt.get();
+    }
+
+    private Account findAccountById(Long accountId) {
         Optional<Account> accountOpt = accountRepository.findById(accountId);
         if (accountOpt.isEmpty()) {
             throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Account not found with id: " + accountId);
         }
-        Account account = accountOpt.get();
-
-        return new BalanceResponseDto(account.getId(), account.getAccountNumber(), account.getBalance());
+        return accountOpt.get();
     }
 
-    private AccountResponseDto mapToResponse(Account account) {
+    private Account findAccountByIdForUpdate(Long accountId) {
+        Optional<Account> accountOpt = accountRepository.findByIdForUpdate(accountId);
+        if (accountOpt.isEmpty()) {
+            throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Account not found with id: " + accountId);
+        }
+        return accountOpt.get();
+    }
+
+    private Account[] lockAccountsForTransfer(Long fromAccountId, Long toAccountId) {
+        Long firstId = fromAccountId < toAccountId ? fromAccountId : toAccountId;
+        Long secondId = fromAccountId < toAccountId ? toAccountId : fromAccountId;
+
+        Account firstAccount = findAccountByIdForUpdate(firstId);
+        Account secondAccount = findAccountByIdForUpdate(secondId);
+
+        if (fromAccountId.equals(firstId)) {
+            return new Account[]{firstAccount, secondAccount};
+        }
+
+        return new Account[]{secondAccount, firstAccount};
+    }
+
+    private void requireActiveAccount(Account account) {
+        if (account.getStatus() != AccountStatus.ACTIVE) {
+            throw new ResponseStatusException(
+                    HttpStatus.BAD_REQUEST,
+                    "Account " + account.getId() + " is not active"
+            );
+        }
+    }
+
+    private void validateMinimumOpeningDeposit(AccountType accountType, BigDecimal initialDeposit) {
+        BigDecimal minimumOpeningDeposit = accountType == AccountType.SAVINGS
+                ? MIN_SAVINGS_OPENING_DEPOSIT
+                : MIN_CURRENT_OPENING_DEPOSIT;
+
+        if (initialDeposit.compareTo(minimumOpeningDeposit) < 0) {
+            throw new ResponseStatusException(
+                    HttpStatus.BAD_REQUEST,
+                    accountType + " account requires minimum opening deposit of " + minimumOpeningDeposit
+            );
+        }
+    }
+
+    private BigDecimal normalizePositiveAmount(BigDecimal amount, String fieldName) {
+        BigDecimal normalizedAmount = normalizeScale(amount, fieldName);
+        if (normalizedAmount.compareTo(BigDecimal.ZERO) <= 0) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, fieldName + " must be greater than 0");
+        }
+        return normalizedAmount;
+    }
+
+    private BigDecimal normalizeNonNegativeAmount(BigDecimal amount, String fieldName) {
+        BigDecimal normalizedAmount = normalizeScale(amount, fieldName);
+        if (normalizedAmount.compareTo(BigDecimal.ZERO) < 0) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, fieldName + " cannot be negative");
+        }
+        return normalizedAmount;
+    }
+
+    private BigDecimal normalizeScale(BigDecimal amount, String fieldName) {
+        if (amount == null) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, fieldName + " is required");
+        }
+        return amount.setScale(2, RoundingMode.HALF_UP);
+    }
+
+    private Transaction saveTransaction(
+            TransactionType type,
+            Long fromAccountId,
+            Long toAccountId,
+            BigDecimal amount,
+            BigDecimal balanceAfter,
+            BigDecimal destinationBalanceAfter,
+            String description
+    ) {
+        Transaction transaction = new Transaction();
+        transaction.setType(type);
+        transaction.setAmount(amount);
+        transaction.setFromAccountId(fromAccountId);
+        transaction.setToAccountId(toAccountId);
+        transaction.setBalanceAfter(balanceAfter);
+        transaction.setDestinationBalanceAfter(destinationBalanceAfter);
+        transaction.setDescription(description);
+        return transactionRepository.save(transaction);
+    }
+
+    private AccountResponseDto mapToAccountResponse(Account account, String message) {
         AccountResponseDto responseDto = new AccountResponseDto();
         responseDto.setAccountId(account.getId());
         responseDto.setAccountNumber(account.getAccountNumber());
@@ -199,19 +330,23 @@ public class AccountServiceImpl implements AccountService {
         responseDto.setOpenedAt(account.getOpenedAt());
         responseDto.setUserId(account.getUser().getId());
         responseDto.setUserName(account.getUser().getName());
+        responseDto.setMessage(message);
         return responseDto;
     }
 
-    private BigDecimal normalizeAmount(BigDecimal amount) {
-        if (amount == null) {
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Amount is required");
-        }
-
-        if (amount.compareTo(BigDecimal.ZERO) <= 0) {
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Amount must be positive");
-        }
-
-        return amount.setScale(2, RoundingMode.HALF_UP);
+    private TransactionResponseDto mapToTransactionResponse(Transaction transaction, String message) {
+        TransactionResponseDto responseDto = new TransactionResponseDto();
+        responseDto.setId(transaction.getId());
+        responseDto.setType(transaction.getType());
+        responseDto.setAmount(transaction.getAmount());
+        responseDto.setFromAccountId(transaction.getFromAccountId());
+        responseDto.setToAccountId(transaction.getToAccountId());
+        responseDto.setBalanceAfter(transaction.getBalanceAfter());
+        responseDto.setDestinationBalanceAfter(transaction.getDestinationBalanceAfter());
+        responseDto.setTimestamp(transaction.getTimestamp());
+        responseDto.setDescription(transaction.getDescription());
+        responseDto.setMessage(message);
+        return responseDto;
     }
 
     private String generateUniqueAccountNumber() {
