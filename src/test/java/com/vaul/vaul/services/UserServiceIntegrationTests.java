@@ -2,11 +2,11 @@ package com.vaul.vaul.services;
 
 import com.vaul.vaul.dtos.userdtos.LoginRequestDto;
 import com.vaul.vaul.dtos.userdtos.LoginResponseDto;
-import com.vaul.vaul.dtos.userdtos.registerRequestDto;
+import com.vaul.vaul.dtos.userdtos.UserRequestDto;
 import com.vaul.vaul.entities.User;
 import com.vaul.vaul.repositories.AccountRepository;
 import com.vaul.vaul.repositories.TransactionRepository;
-import com.vaul.vaul.repositories.UserRepo;
+import com.vaul.vaul.repositories.UserRepository;
 import com.vaul.vaul.services.interfaces.UserService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -23,7 +23,7 @@ class UserServiceIntegrationTests {
     private UserService userService;
 
     @Autowired
-    private UserRepo userRepo;
+    private UserRepository userRepo;
 
     @Autowired
     private AccountRepository accountRepository;
@@ -40,7 +40,7 @@ class UserServiceIntegrationTests {
 
     @Test
     void loginShouldSucceedForRegisteredUser() {
-        registerRequestDto registerDto = new registerRequestDto(
+        UserRequestDto registerDto = new UserRequestDto(
                 "Login User",
                 "login-user@example.com",
                 "pass123",

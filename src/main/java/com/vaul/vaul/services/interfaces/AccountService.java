@@ -14,6 +14,8 @@ public interface AccountService {
 
     AccountResponseDto getAccountById(Long accountId);
 
+    AccountResponseDto getAccountByNumber(String accountNumber);
+
     List<AccountResponseDto> getAccountsByUserId(Long userId);
 
     AccountResponseDto deposit(DepositRequestDto requestDto);
@@ -25,4 +27,10 @@ public interface AccountService {
     List<TransactionResponseDto> getTransactionsByAccountId(Long accountId);
 
     BalanceResponseDto getBalance(Long accountId);
+
+    AccountResponseDto blockAccount(Long accountId);
+
+    AccountResponseDto activateAccount(Long accountId);
+
+    AccountResponseDto closeAccount(Long accountId);
 }

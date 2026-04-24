@@ -15,7 +15,7 @@ import com.vaul.vaul.enums.account.AccountType;
 import com.vaul.vaul.enums.transaction.TransactionType;
 import com.vaul.vaul.repositories.AccountRepository;
 import com.vaul.vaul.repositories.TransactionRepository;
-import com.vaul.vaul.repositories.UserRepo;
+import com.vaul.vaul.repositories.UserRepository;
 import com.vaul.vaul.services.interfaces.AccountService;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
@@ -38,16 +38,16 @@ public class AccountServiceImpl implements AccountService {
     private static final BigDecimal MIN_CURRENT_OPENING_DEPOSIT = new BigDecimal("5000.00");
 
     private final AccountRepository accountRepository;
-    private final UserRepo userRepo;
+    private final UserRepository userRepository;
     private final TransactionRepository transactionRepository;
 
     public AccountServiceImpl(
             AccountRepository accountRepository,
-            UserRepo userRepo,
+            UserRepository userRepository,
             TransactionRepository transactionRepository
     ) {
         this.accountRepository = accountRepository;
-        this.userRepo = userRepo;
+        this.userRepository = userRepository;
         this.transactionRepository = transactionRepository;
     }
 
@@ -89,8 +89,14 @@ public class AccountServiceImpl implements AccountService {
 
     @Override
     @Transactional(readOnly = true)
+    public AccountResponseDto getAccountByNumber(String accountNumber) {
+        return mapToAccountResponse(findAccountByNumber(accountNumber), null);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
     public List<AccountResponseDto> getAccountsByUserId(Long userId) {
-        if (!userRepo.existsById(userId)) {
+        if (!userRepository.existsById(userId)) {
             throw new ResponseStatusException(HttpStatus.NOT_FOUND, "User not found with id: " + userId);
         }
 
@@ -216,12 +222,50 @@ public class AccountServiceImpl implements AccountService {
         return new BalanceResponseDto(account.getId(), account.getAccountNumber(), account.getBalance());
     }
 
+    @Override
+    @Transactional
+    public AccountResponseDto blockAccount(Long accountId) {
+        return changeAccountStatus(accountId, AccountStatus.BLOCKED, "Account blocked successfully");
+    }
+
+    @Override
+    @Transactional
+    public AccountResponseDto activateAccount(Long accountId) {
+        return changeAccountStatus(accountId, AccountStatus.ACTIVE, "Account activated successfully");
+    }
+
+    @Override
+    @Transactional
+    public AccountResponseDto closeAccount(Long accountId) {
+        Account account = findAccountByIdForUpdate(accountId);
+
+        if (account.getStatus() == AccountStatus.CLOSED) {
+            return mapToAccountResponse(account, "Account is already closed");
+        }
+
+        if (account.getBalance().compareTo(BigDecimal.ZERO) != 0) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Account balance must be zero before closing");
+        }
+
+        account.setStatus(AccountStatus.CLOSED);
+        Account savedAccount = accountRepository.save(account);
+        return mapToAccountResponse(savedAccount, "Account closed successfully");
+    }
+
     private User findUserById(Long userId) {
-        Optional<User> userOpt = userRepo.findById(userId);
+        Optional<User> userOpt = userRepository.findById(userId);
         if (userOpt.isEmpty()) {
             throw new ResponseStatusException(HttpStatus.NOT_FOUND, "User not found with id: " + userId);
         }
         return userOpt.get();
+    }
+
+    private Account findAccountByNumber(String accountNumber) {
+        Optional<Account> accountOpt = accountRepository.findByAccountNumber(accountNumber);
+        if (accountOpt.isEmpty()) {
+            throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Account not found with number: " + accountNumber);
+        }
+        return accountOpt.get();
     }
 
     private Account findAccountById(Long accountId) {
@@ -252,6 +296,22 @@ public class AccountServiceImpl implements AccountService {
         }
 
         return new Account[]{secondAccount, firstAccount};
+    }
+
+    private AccountResponseDto changeAccountStatus(Long accountId, AccountStatus targetStatus, String successMessage) {
+        Account account = findAccountByIdForUpdate(accountId);
+
+        if (account.getStatus() == AccountStatus.CLOSED) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Closed account cannot change status");
+        }
+
+        if (account.getStatus() == targetStatus) {
+            return mapToAccountResponse(account, "Account is already " + targetStatus.name().toLowerCase());
+        }
+
+        account.setStatus(targetStatus);
+        Account savedAccount = accountRepository.save(account);
+        return mapToAccountResponse(savedAccount, successMessage);
     }
 
     private void requireActiveAccount(Account account) {

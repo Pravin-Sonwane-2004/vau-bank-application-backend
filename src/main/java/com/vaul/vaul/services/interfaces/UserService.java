@@ -2,26 +2,26 @@ package com.vaul.vaul.services.interfaces;
 
 import com.vaul.vaul.dtos.userdtos.LoginRequestDto;
 import com.vaul.vaul.dtos.userdtos.LoginResponseDto;
-import com.vaul.vaul.dtos.userdtos.registerRequestDto;
-import com.vaul.vaul.dtos.userdtos.responseRegistration;
+import com.vaul.vaul.dtos.userdtos.UserRequestDto;
+import com.vaul.vaul.dtos.userdtos.UserResponseDto;
 import com.vaul.vaul.enums.branches.ExistsBranches;
 
 import java.util.List;
 
 public interface UserService {
-    responseRegistration registerUser(registerRequestDto dto);
+    UserResponseDto registerUser(UserRequestDto dto);
 
     LoginResponseDto loginUser(LoginRequestDto dto);
 
-    List<responseRegistration> fetchUser();
+    List<UserResponseDto> fetchUser();
 
-    responseRegistration getOneUser(Long id);
+    UserResponseDto getOneUser(Long id);
 
-    List<responseRegistration> addBulkUsers(List<registerRequestDto> dto);
+    List<UserResponseDto> addBulkUsers(List<UserRequestDto> dto);
 
-    responseRegistration updateUserById(Long id, registerRequestDto dto);
+    UserResponseDto updateUserById(Long id, UserRequestDto dto);
 
-    responseRegistration updateUserByEmail(String email, registerRequestDto dto);
+    UserResponseDto updateUserByEmail(String email, UserRequestDto dto);
 
     List<ExistsBranches> returnAllBranches();
 }

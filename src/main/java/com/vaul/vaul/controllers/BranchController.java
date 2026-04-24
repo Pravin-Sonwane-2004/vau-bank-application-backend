@@ -1,7 +1,7 @@
 package com.vaul.vaul.controllers;
 
 import com.vaul.vaul.enums.branches.ExistsBranches;
-import com.vaul.vaul.services.implementations.UserService;
+import com.vaul.vaul.services.interfaces.UserService;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;

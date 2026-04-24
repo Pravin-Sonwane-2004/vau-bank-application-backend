@@ -2,9 +2,9 @@ package com.vaul.vaul.controllers;
 
 import com.vaul.vaul.dtos.userdtos.LoginRequestDto;
 import com.vaul.vaul.dtos.userdtos.LoginResponseDto;
-import com.vaul.vaul.dtos.userdtos.registerRequestDto;
-import com.vaul.vaul.dtos.userdtos.responseRegistration;
-import com.vaul.vaul.services.implementations.UserService;
+import com.vaul.vaul.dtos.userdtos.UserRequestDto;
+import com.vaul.vaul.dtos.userdtos.UserResponseDto;
+import com.vaul.vaul.services.interfaces.UserService;
 import jakarta.validation.Valid;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -27,39 +27,39 @@ public class UserController {
     }
 
     @PostMapping("/add")
-    public ResponseEntity<responseRegistration> addUser(@Valid @RequestBody registerRequestDto registerRequestDto) {
-        return ResponseEntity.ok(service.registerUser(registerRequestDto));
+    public ResponseEntity<UserResponseDto> addUser(@Valid @RequestBody UserRequestDto userRequestDto) {
+        return ResponseEntity.ok(service.registerUser(userRequestDto));
     }
 
     @PostMapping("/bulk")
-    public ResponseEntity<List<responseRegistration>> addBulkUsers(
-            @Valid @RequestBody List<registerRequestDto> registerRequests) {
-        return ResponseEntity.ok(service.addBulkUsers(registerRequests));
+    public ResponseEntity<List<UserResponseDto>> addBulkUsers(
+            @Valid @RequestBody List<UserRequestDto> userRequests) {
+        return ResponseEntity.ok(service.addBulkUsers(userRequests));
     }
 
     @PutMapping("/update/{id}")
-    public ResponseEntity<responseRegistration> updateUserById(
+    public ResponseEntity<UserResponseDto> updateUserById(
             @PathVariable Long id,
-            @RequestBody registerRequestDto dto) {
+            @RequestBody UserRequestDto dto) {
 
         return ResponseEntity.ok(service.updateUserById(id, dto));
     }
 
     @PutMapping("/updatebyemail/{email}")
-    public ResponseEntity<responseRegistration> updateUserByEmail(
+    public ResponseEntity<UserResponseDto> updateUserByEmail(
             @PathVariable String email,
-            @RequestBody registerRequestDto dto) {
+            @RequestBody UserRequestDto dto) {
 
         return ResponseEntity.ok(service.updateUserByEmail(email, dto));
     }
 
     @GetMapping("/getall")
-    public ResponseEntity<List<responseRegistration>> fetch() {
+    public ResponseEntity<List<UserResponseDto>> fetch() {
         return ResponseEntity.ok(service.fetchUser());
     }
 
     @GetMapping("/get/{id}")
-    public ResponseEntity<responseRegistration> getUserById(@PathVariable Long id) {
+    public ResponseEntity<UserResponseDto> getUserById(@PathVariable Long id) {
         return ResponseEntity.ok(service.getOneUser(id));
     }
 

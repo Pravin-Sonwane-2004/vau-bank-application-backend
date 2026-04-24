@@ -1,7 +1,7 @@
 package com.vaul.vaul.exceptions;
 
 import com.vaul.vaul.dtos.common.ApiErrorResponseDto;
-import com.vaul.vaul.exceptions.userrelated.UserAlredyPresent;
+import com.vaul.vaul.exceptions.userrelated.UserAlreadyPresentException;
 import com.vaul.vaul.exceptions.userrelated.UserNotFoundException;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.http.HttpStatus;
@@ -45,8 +45,8 @@ public class GlobalExceptionHandler {
         return buildResponse(HttpStatus.NOT_FOUND, exception.getMessage(), null);
     }
 
-    @ExceptionHandler(UserAlredyPresent.class)
-    public ResponseEntity<ApiErrorResponseDto> handleUserAlreadyPresent(UserAlredyPresent exception) {
+    @ExceptionHandler(UserAlreadyPresentException.class)
+    public ResponseEntity<ApiErrorResponseDto> handleUserAlreadyPresent(UserAlreadyPresentException exception) {
         return buildResponse(HttpStatus.CONFLICT, exception.getMessage(), null);
     }
 

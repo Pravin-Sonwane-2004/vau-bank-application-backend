@@ -1,6 +1,8 @@
 package com.vaul.vaul.services;
 
 import com.vaul.vaul.dtos.accountdtos.AccountOpenRequestDto;
+import com.vaul.vaul.dtos.accountdtos.AccountResponseDto;
+import com.vaul.vaul.dtos.transactiondtos.DepositRequestDto;
 import com.vaul.vaul.dtos.transactiondtos.TransactionResponseDto;
 import com.vaul.vaul.dtos.transactiondtos.TransferRequestDto;
 import com.vaul.vaul.entities.Account;
@@ -12,7 +14,7 @@ import com.vaul.vaul.enums.branches.ExistsBranches;
 import com.vaul.vaul.enums.transaction.TransactionType;
 import com.vaul.vaul.repositories.AccountRepository;
 import com.vaul.vaul.repositories.TransactionRepository;
-import com.vaul.vaul.repositories.UserRepo;
+import com.vaul.vaul.repositories.UserRepository;
 import com.vaul.vaul.services.interfaces.AccountService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -40,7 +42,7 @@ class AccountServiceIntegrationTests {
     private TransactionRepository transactionRepository;
 
     @Autowired
-    private UserRepo userRepo;
+    private UserRepository userRepo;
 
     @BeforeEach
     void cleanDatabase() {
@@ -90,6 +92,65 @@ class AccountServiceIntegrationTests {
                     assertThat(responseStatusException.getStatusCode().value()).isEqualTo(400);
                     assertThat(responseStatusException.getReason()).contains("minimum opening deposit");
                 });
+    }
+
+    @Test
+    void blockedAccountShouldRejectDepositUntilActivated() {
+        User user = saveUser("blocked-account@example.com");
+        Account account = saveAccount(user, "202600000003", new BigDecimal("1500.00"));
+
+        AccountResponseDto blockedAccount = accountService.blockAccount(account.getId());
+
+        assertThat(blockedAccount.getStatus()).isEqualTo(AccountStatus.BLOCKED);
+        assertThat(blockedAccount.getMessage()).isEqualTo("Account blocked successfully");
+
+        assertThatThrownBy(() -> accountService.deposit(
+                new DepositRequestDto(account.getId(), new BigDecimal("100.00"))
+        ))
+                .isInstanceOf(ResponseStatusException.class)
+                .satisfies(exception -> {
+                    ResponseStatusException responseStatusException = (ResponseStatusException) exception;
+                    assertThat(responseStatusException.getStatusCode().value()).isEqualTo(400);
+                    assertThat(responseStatusException.getReason()).contains("is not active");
+                });
+
+        AccountResponseDto activatedAccount = accountService.activateAccount(account.getId());
+        AccountResponseDto depositResponse = accountService.deposit(
+                new DepositRequestDto(account.getId(), new BigDecimal("100.00"))
+        );
+
+        assertThat(activatedAccount.getStatus()).isEqualTo(AccountStatus.ACTIVE);
+        assertThat(activatedAccount.getMessage()).isEqualTo("Account activated successfully");
+        assertThat(depositResponse.getBalance()).isEqualByComparingTo("1600.00");
+    }
+
+    @Test
+    void closeAccountShouldRequireZeroBalance() {
+        User user = saveUser("close-account@example.com");
+        Account account = saveAccount(user, "202600000004", new BigDecimal("750.00"));
+
+        assertThatThrownBy(() -> accountService.closeAccount(account.getId()))
+                .isInstanceOf(ResponseStatusException.class)
+                .satisfies(exception -> {
+                    ResponseStatusException responseStatusException = (ResponseStatusException) exception;
+                    assertThat(responseStatusException.getStatusCode().value()).isEqualTo(400);
+                    assertThat(responseStatusException.getReason()).isEqualTo("Account balance must be zero before closing");
+                });
+    }
+
+    @Test
+    void closeAccountShouldCloseZeroBalanceAccountAndSupportLookupByNumber() {
+        User user = saveUser("lookup-account@example.com");
+        Account account = saveAccount(user, "202600000005", BigDecimal.ZERO);
+
+        AccountResponseDto closedAccount = accountService.closeAccount(account.getId());
+        AccountResponseDto lookupResponse = accountService.getAccountByNumber(account.getAccountNumber());
+
+        assertThat(closedAccount.getStatus()).isEqualTo(AccountStatus.CLOSED);
+        assertThat(closedAccount.getMessage()).isEqualTo("Account closed successfully");
+        assertThat(lookupResponse.getAccountId()).isEqualTo(account.getId());
+        assertThat(lookupResponse.getAccountNumber()).isEqualTo("202600000005");
+        assertThat(lookupResponse.getStatus()).isEqualTo(AccountStatus.CLOSED);
     }
 
     private User saveUser(String email) {

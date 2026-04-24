@@ -11,7 +11,7 @@ import lombok.Setter;
 @JsonInclude(JsonInclude.Include.NON_NULL)
 @Getter
 @Setter
-public class responseRegistration {
+public class UserResponseDto {
     private Long id;
     private String name;
     private String email;

@@ -1,8 +1,12 @@
-package com.vaul.vaul.dtos.transactiondtos;
+package com.vaul.vaul.controllers;
 
 import com.vaul.vaul.dtos.accountdtos.AccountOpenRequestDto;
 import com.vaul.vaul.dtos.accountdtos.AccountResponseDto;
 import com.vaul.vaul.dtos.accountdtos.BalanceResponseDto;
+import com.vaul.vaul.dtos.transactiondtos.DepositRequestDto;
+import com.vaul.vaul.dtos.transactiondtos.TransactionResponseDto;
+import com.vaul.vaul.dtos.transactiondtos.TransferRequestDto;
+import com.vaul.vaul.dtos.transactiondtos.WithdrawRequestDto;
 import com.vaul.vaul.services.interfaces.AccountService;
 import jakarta.validation.Valid;
 import org.springframework.http.HttpStatus;
@@ -29,6 +33,11 @@ public class AccountController {
     @GetMapping("/{accountId}")
     public ResponseEntity<AccountResponseDto> getAccountById(@PathVariable Long accountId) {
         return ResponseEntity.ok(accountService.getAccountById(accountId));
+    }
+
+    @GetMapping("/number/{accountNumber}")
+    public ResponseEntity<AccountResponseDto> getAccountByNumber(@PathVariable String accountNumber) {
+        return ResponseEntity.ok(accountService.getAccountByNumber(accountNumber));
     }
 
     @GetMapping("/user/{userId}")
@@ -59,5 +68,20 @@ public class AccountController {
     @GetMapping("/{accountId}/balance")
     public ResponseEntity<BalanceResponseDto> getBalance(@PathVariable Long accountId) {
         return ResponseEntity.ok(accountService.getBalance(accountId));
+    }
+
+    @PatchMapping("/{accountId}/block")
+    public ResponseEntity<AccountResponseDto> blockAccount(@PathVariable Long accountId) {
+        return ResponseEntity.ok(accountService.blockAccount(accountId));
+    }
+
+    @PatchMapping("/{accountId}/activate")
+    public ResponseEntity<AccountResponseDto> activateAccount(@PathVariable Long accountId) {
+        return ResponseEntity.ok(accountService.activateAccount(accountId));
+    }
+
+    @PatchMapping("/{accountId}/close")
+    public ResponseEntity<AccountResponseDto> closeAccount(@PathVariable Long accountId) {
+        return ResponseEntity.ok(accountService.closeAccount(accountId));
     }
 }

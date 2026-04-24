@@ -2,13 +2,14 @@ package com.vaul.vaul.services.implementations;
 
 import com.vaul.vaul.dtos.userdtos.LoginRequestDto;
 import com.vaul.vaul.dtos.userdtos.LoginResponseDto;
-import com.vaul.vaul.dtos.userdtos.registerRequestDto;
-import com.vaul.vaul.dtos.userdtos.responseRegistration;
+import com.vaul.vaul.dtos.userdtos.UserRequestDto;
+import com.vaul.vaul.dtos.userdtos.UserResponseDto;
 import com.vaul.vaul.entities.User;
 import com.vaul.vaul.enums.branches.ExistsBranches;
-import com.vaul.vaul.exceptions.userrelated.UserAlredyPresent;
+import com.vaul.vaul.exceptions.userrelated.UserAlreadyPresentException;
 import com.vaul.vaul.exceptions.userrelated.UserNotFoundException;
-import com.vaul.vaul.repositories.UserRepo;
+import com.vaul.vaul.repositories.UserRepository;
+import com.vaul.vaul.services.interfaces.UserService;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -20,17 +21,17 @@ import java.util.List;
 import java.util.Optional;
 
 @Service
-public class UserService implements com.vaul.vaul.services.interfaces.UserService {
+public class UserServiceImpl implements UserService {
 
-    private final UserRepo repo;
+    private final UserRepository repo;
 
-    public UserService(UserRepo repo) {
+    public UserServiceImpl(UserRepository repo) {
         this.repo = repo;
     }
 
     @Override
     @Transactional
-    public responseRegistration registerUser(registerRequestDto dto) {
+    public UserResponseDto registerUser(UserRequestDto dto) {
         ensureEmailIsAvailable(dto.getEmail(), null);
         User savedUser = repo.save(buildUser(dto));
         return toResponse(savedUser, "User registered successfully");
@@ -60,9 +61,9 @@ public class UserService implements com.vaul.vaul.services.interfaces.UserServic
 
     @Override
     @Transactional(readOnly = true)
-    public List<responseRegistration> fetchUser() {
+    public List<UserResponseDto> fetchUser() {
         List<User> users = repo.findAll();
-        List<responseRegistration> responseList = new ArrayList<>();
+        List<UserResponseDto> responseList = new ArrayList<>();
         for (User user : users) {
             responseList.add(toResponse(user, null));
         }
@@ -71,21 +72,21 @@ public class UserService implements com.vaul.vaul.services.interfaces.UserServic
 
     @Override
     @Transactional(readOnly = true)
-    public responseRegistration getOneUser(Long id) {
+    public UserResponseDto getOneUser(Long id) {
         return toResponse(findUserById(id), null);
     }
 
     @Override
     @Transactional
-    public List<responseRegistration> addBulkUsers(List<registerRequestDto> dtoList) {
+    public List<UserResponseDto> addBulkUsers(List<UserRequestDto> dtoList) {
         List<User> users = new ArrayList<>();
-        for (registerRequestDto dto : dtoList) {
+        for (UserRequestDto dto : dtoList) {
             ensureEmailIsAvailable(dto.getEmail(), null);
             users.add(buildUser(dto));
         }
 
         List<User> savedUsers = repo.saveAll(users);
-        List<responseRegistration> responseList = new ArrayList<>();
+        List<UserResponseDto> responseList = new ArrayList<>();
         for (User user : savedUsers) {
             responseList.add(toResponse(user, "User registered successfully"));
         }
@@ -94,7 +95,7 @@ public class UserService implements com.vaul.vaul.services.interfaces.UserServic
 
     @Override
     @Transactional
-    public responseRegistration updateUserById(Long id, registerRequestDto dto) {
+    public UserResponseDto updateUserById(Long id, UserRequestDto dto) {
         User user = findUserById(id);
         applyUpdates(user, dto);
         User updatedUser = repo.save(user);
@@ -103,7 +104,7 @@ public class UserService implements com.vaul.vaul.services.interfaces.UserServic
 
     @Override
     @Transactional
-    public responseRegistration updateUserByEmail(String email, registerRequestDto dto) {
+    public UserResponseDto updateUserByEmail(String email, UserRequestDto dto) {
         Optional<User> userOpt = repo.findByEmail(email);
         if (userOpt.isEmpty()) {
             throw new UserNotFoundException(email);
@@ -116,11 +117,12 @@ public class UserService implements com.vaul.vaul.services.interfaces.UserServic
     }
 
     @Override
+    @Transactional(readOnly = true)
     public List<ExistsBranches> returnAllBranches() {
         return Arrays.asList(ExistsBranches.values());
     }
 
-    private User buildUser(registerRequestDto dto) {
+    private User buildUser(UserRequestDto dto) {
         User user = new User();
         user.setName(dto.getName());
         user.setEmail(dto.getEmail());
@@ -138,7 +140,7 @@ public class UserService implements com.vaul.vaul.services.interfaces.UserServic
         return userOpt.get();
     }
 
-    private void applyUpdates(User user, registerRequestDto dto) {
+    private void applyUpdates(User user, UserRequestDto dto) {
         if (dto.getName() != null && !dto.getName().isBlank()) {
             user.setName(dto.getName());
         }
@@ -165,13 +167,13 @@ public class UserService implements com.vaul.vaul.services.interfaces.UserServic
         Optional<User> existingUser = repo.findByEmail(email);
         if (existingUser.isPresent()) {
             if (currentUserId == null || !existingUser.get().getId().equals(currentUserId)) {
-                throw new UserAlredyPresent(email);
+                throw new UserAlreadyPresentException(email);
             }
         }
     }
 
-    private responseRegistration toResponse(User user, String message) {
-        responseRegistration response = new responseRegistration();
+    private UserResponseDto toResponse(User user, String message) {
+        UserResponseDto response = new UserResponseDto();
         response.setId(user.getId());
         response.setName(user.getName());
         response.setEmail(user.getEmail());
